@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"english-word-card-api/internal/helper"
 	"english-word-card-api/internal/model"
 	"fmt"
 	"net/http"
@@ -20,6 +21,7 @@ type CreateVocabularyRequest struct {
 	Mean       string `json:"mean" binding:"required"`
 	Category   string `json:"category"`
 	Difficulty int    `json:"difficulty"`
+	UserId	int   `json:"user_id"`
 }
 
 func NewVocabularyHandler(db *gorm.DB) *VocabularyHandler {
@@ -83,8 +85,16 @@ func (h *VocabularyHandler) GetVocabulary(c *gin.Context) {
 func (h *VocabularyHandler) CreateVocabulary(c *gin.Context) {
 	var req CreateVocabularyRequest
 
+	// 使用 helper 取得當前用戶
+	user, err := helper.GetCurrentUser(c, h.db)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
 	// 綁定 JSON 到 struct
-	// err 不等於空的話，代表綁定失敗
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -98,9 +108,10 @@ func (h *VocabularyHandler) CreateVocabulary(c *gin.Context) {
 		Mean:    req.Mean,  //解釋參數 (string)
 		Category:   req.Category, //種類 (string)
 		Difficulty: req.Difficulty, //難度 (int)
+		UserId:  user.ID,// 使用 helper 取得的用戶 ID
 	}
 
-	fmt.Printf("Creating vocabulary: %+v\n", vocabulary)
+	fmt.Printf("Creating vocabulary for user %s: %+v\n", user.Username, vocabulary)
 
 	// 存入資料庫
 	result := h.db.Create(&vocabulary)

@@ -6,6 +6,7 @@ import (
 
 type Vocabulary struct {
 	ID         uint      `json:"id" gorm:"primaryKey"`
+	UserId    uint      `json:"user_id"`
 	Vocabulary    string    `json:"vocabulary" gorm:"not null"`
 	Mean    string    `json:"mean" gorm:"not null"`
 	Category   string    `json:"category"`
