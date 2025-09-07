@@ -3,6 +3,7 @@ package handler
 import (
 	"english-word-card-api/internal/middleware"
 	"english-word-card-api/internal/model"
+	"errors"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -41,18 +42,26 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 
 	// 從資料庫查找用戶
 	var user model.User
+	isNewUser := false
 	if err := h.db.Where("username = ?", req.Username).First(&user).Error; err != nil {
-		c.JSON(401, gin.H{"error": "Invalid username or password"})
-		return
+		newUser,err := h.createUser(req)
+
+		if err != nil{
+			c.JSON(400,gin.H{"error": err.Error()})
+			return
+		}
+		
+		user = *newUser
+		isNewUser = true
 	}
 
-	// 比對密碼
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		c.JSON(401, gin.H{"error": "Invalid username or password"})
-		return
-	}
-
-	// 生成 access token (短期的)
+	// 只有現有用戶才需要比對密碼
+	if !isNewUser {
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+			c.JSON(401, gin.H{"error": "Invalid username or password"})
+			return
+		}
+	}	// 生成 access token (短期的)
 	accessToken := middleware.GenerateToken(req.Username)
 
 	// refresh token (24h)
@@ -100,9 +109,18 @@ func (h *AuthenticateHandler) Register(c *gin.Context) {
 
 	// 檢查用戶是否已存在
 	var existingUser model.User
-	if err := h.db.Where("username = ? OR email = ?", req.Username, req.Email).First(&existingUser).Error; err == nil {
-		c.JSON(400, gin.H{"error": "User already exists"})
+	// 檢查 username 是否重複
+	if err := h.db.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+		c.JSON(400, gin.H{"error": "Username already exists"})
 		return
+	}
+	
+	// 只有當 email 不為空時才檢查 email 重複
+	if req.Email != "" {
+		if err := h.db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+			c.JSON(400, gin.H{"error": "Email already exists"})
+			return
+		}
 	}
 
 	// 加密密碼
@@ -160,4 +178,39 @@ func (h *AuthenticateHandler) RefreshToken(c *gin.Context) {
         "token_type":   "Bearer",
         "expires_in":   900,
     })
+}
+
+func (h *AuthenticateHandler) createUser(req CreateUserRequest) (*model.User, error) {
+	var existingUser model.User
+	println("Creating user:", req.Username, req.Email)
+	
+	// 檢查 username 是否重複
+	if err := h.db.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+		return nil, errors.New("username already exists")
+	}
+	
+	// 只有當 email 不為空時才檢查 email 重複
+	if req.Email != "" {
+		if err := h.db.Where("email = ?", req.Email).First(&existingUser).Error; err == nil {
+			return nil, errors.New("email already exists")
+		}
+	}
+
+	//加密密碼
+	hashedPassword,err := bcrypt.GenerateFromPassword([]byte(req.Password),bcrypt.DefaultCost)
+	if err != nil {
+		return nil,err
+	}
+
+	user := model.User{
+		Username: req.Username,
+		Email:    req.Email,
+		Password: string(hashedPassword),
+	}
+
+   if err := h.db.Create(&user).Error; err != nil {
+	   return nil,err
+   }
+
+	return &user, nil
 }
