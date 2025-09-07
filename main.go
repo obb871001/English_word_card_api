@@ -48,7 +48,7 @@ func main() {
 		public.POST("auth/refresh", auth.RefreshToken)
 
 		// 其他公開的 API...
-		public.GET("hard-vocabulary", vocabularyHandler.GetHardVocabulary)
+		public.GET("vocabulary/difficulty/:level", vocabularyHandler.GetHardVocabulary)
 		
 	}
 	

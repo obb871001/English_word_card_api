@@ -91,9 +91,17 @@ func (h *VocabularyHandler) GetVocabulary(c *gin.Context) {
 
 //獲得難度5的單字列表
 func (h*VocabularyHandler) GetHardVocabulary(c *gin.Context){
+	level, err := strconv.Atoi(c.Param("level"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Difficulty level is required and must be an integer",
+		})
+		return
+	}
+
 	var hardVocabulary []model.Vocabulary
 
-	result := h.db.Where("difficulty = ?", 5).Limit(20).Find(&hardVocabulary)
+	result := h.db.Where("difficulty = ?", level).Limit(20).Find(&hardVocabulary)
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
