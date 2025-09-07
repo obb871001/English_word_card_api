@@ -13,4 +13,5 @@ type Vocabulary struct {
 	Difficulty int       `json:"difficulty"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+	BatchID   string    `json:"batch_id"`
 }

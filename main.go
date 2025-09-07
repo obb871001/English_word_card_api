@@ -46,10 +46,10 @@ func main() {
 		public.POST("auth/login", auth.Login)
 		public.POST("auth/register", auth.Register)
 		public.POST("auth/refresh", auth.RefreshToken)
+
+		// 其他公開的 API...
+		public.GET("hard-vocabulary", vocabularyHandler.GetHardVocabulary)
 		
-		// 公開的單字查詢（如果你想要公開的話）
-		public.GET("vocabulary", vocabularyHandler.GetAllVocabulary)
-		public.GET("vocabulary/:id", vocabularyHandler.GetVocabulary)
 	}
 	
 	// 受保護路由（需要驗證）
@@ -58,6 +58,9 @@ func main() {
 	{
 		// 需要登入才能創建單字
 		protected.POST("vocabulary", vocabularyHandler.CreateVocabulary)
+		// 公開的單字查詢（如果你想要公開的話）
+		protected.GET("vocabulary", vocabularyHandler.GetAllVocabulary)
+		protected.GET("vocabulary/:id", vocabularyHandler.GetVocabulary)
 		
 		// 登出（需要驗證才能登出）
 		protected.POST("auth/logout", auth.Logout)

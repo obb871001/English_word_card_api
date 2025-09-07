@@ -33,7 +33,16 @@ func NewVocabularyHandler(db *gorm.DB) *VocabularyHandler {
 // (c *gin.Context) 函式的輸入參數，代表這次 HTTP 請求的上下文。
 func (h *VocabularyHandler) GetAllVocabulary(c *gin.Context) {
 	var allVocabulary []model.Vocabulary
-	result := h.db.Find(&allVocabulary)
+
+	userId, err := helper.GetCurrentUserID(c, h.db)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	result := h.db.Find(&allVocabulary, "user_id = ?", userId)
 	
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -51,6 +60,7 @@ func (h *VocabularyHandler) GetAllVocabulary(c *gin.Context) {
 // 取得單一單字
 func (h *VocabularyHandler) GetVocabulary(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
+
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid ID",
@@ -76,6 +86,25 @@ func (h *VocabularyHandler) GetVocabulary(c *gin.Context) {
 	
 	c.JSON(http.StatusOK, gin.H{
 		"data": vocabulary,
+	})
+}
+
+//獲得難度5的單字列表
+func (h*VocabularyHandler) GetHardVocabulary(c *gin.Context){
+	var hardVocabulary []model.Vocabulary
+
+	result := h.db.Where("difficulty = ?", 5).Limit(20).Find(&hardVocabulary)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": result.Error.Error(),
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"data": hardVocabulary,
+		"total": len(hardVocabulary),
 	})
 }
 
